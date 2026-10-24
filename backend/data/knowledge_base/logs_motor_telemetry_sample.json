@@ -1,0 +1,43 @@
+{
+  "log_batch_id": "LOG-VFD-2024-409",
+  "facility": "Substation-4 Motor Control Center",
+  "equipment_type": "Variable Frequency Drive (VFD)",
+  "equipment_id": "VFD-MCC4-PMP01",
+  "drive_model": "ABB ACS880 Industrial Drive",
+  "firmware_version": "v3.12.04",
+  "timestamp": "2024-10-02T11:45:00Z",
+  "telemetry_events": [
+    {
+      "timestamp": "2024-10-02T11:44:12Z",
+      "code": "WARN-3101",
+      "severity": "WARNING",
+      "description": "DC Bus Voltage Ripple High (Exceeds 45V RMS threshold)",
+      "telemetry": {
+        "dc_bus_voltage": 685.2,
+        "ripple_voltage_rms": 48.7,
+        "heatsink_temp_c": 74.2,
+        "output_current_a": 312.4
+      },
+      "diagnostic_note": "Indicates degradation or open-circuit failure in one phase of the electrolytic DC bus capacitor bank or input diode rectifier bridge."
+    },
+    {
+      "timestamp": "2024-10-02T11:45:03Z",
+      "code": "FAULT-2310",
+      "severity": "CRITICAL_FAULT",
+      "description": "Overcurrent Trip - Instantaneous Hardware Trip (IGBT Bridge Inverter)",
+      "telemetry": {
+        "dc_bus_voltage": 640.1,
+        "peak_current_a": 890.0,
+        "motor_speed_rpm": 1420,
+        "motor_torque_pct": 108.5,
+        "heatsink_temp_c": 82.1
+      },
+      "diagnostic_note": "Peak current exceeded 250% nominal motor full load amps (FLA: 340A). Probable ground fault in motor stator windings, moisture condensation inside motor terminal conduit box, or shorted IGBT module in phase U."
+    }
+  ],
+  "recommended_troubleshooting_sequence": [
+    "1. Isolate 480V 3-phase line supply and wait 10 minutes for DC bus discharge LEDs to extinguish. Measure DC bus terminals (+/-) with multimeter to verify < 50V DC before touching.",
+    "2. Perform insulation resistance (Megger) test on motor leads disconnected from drive: 1000V DC test voltage; minimum acceptable resistance is 100 Megaohms to ground.",
+    "3. Perform multimeter diode test on VFD output terminals U2, V2, W2 relative to DC+ and DC- bus bars. Forward bias drop should be 0.35V - 0.55V. Reverse bias should read open-circuit (OL)."
+  ]
+}

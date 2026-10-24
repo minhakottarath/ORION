@@ -1,0 +1,714 @@
+\documentclass[11pt,aspectratio=43]{beamer}
+
+%------------------------------------------------
+% Theme
+%------------------------------------------------
+\usetheme{Madrid}
+\usefonttheme{serif}
+
+%------------------------------------------------
+% Colors
+%------------------------------------------------
+\definecolor{AegisBlue}{RGB}{52,50,181}
+\setbeamercolor{structure}{fg=AegisBlue}
+\setbeamercolor{frametitle}{bg=AegisBlue,fg=white}
+\setbeamercolor{title}{bg=AegisBlue,fg=white}
+
+%================================================
+\begin{document}
+
+%------------------------------------------------
+% Slide 1 – Title Slide
+%------------------------------------------------
+\begin{frame}
+\centering
+
+% Title Box
+%------------------------------------------------
+% Blue Title Box
+%------------------------------------------------
+\begin{beamercolorbox}[
+    wd=1\textwidth,
+    rounded=true,
+    shadow=true,
+    sep=9pt,
+    center
+]{title}
+
+\Large\bfseries
+Aegis: A Secure and Autonomous
+Delay-Tolerant Networking Framework
+for Resilient Communication
+
+\end{beamercolorbox}
+
+
+\vspace{0.5cm}
+
+\small
+\begin{tabular}{l l}
+Abhinav K P & TVE23CS003 \\
+Akash B Mohan & TVE23CS016   \\
+Alen K Raju & TVE23CS024 \\
+Janbaas Jamal K K & TVE23CS071 \\
+\end{tabular}
+
+\vspace{0.4cm}
+
+
+\normalsize \textbf{September 15, 2026}
+
+\vspace{0.3cm}
+\normalsize
+\textbf{Project Guide}
+
+\vspace{0.1cm}
+
+\small
+Prof.\ Rameez Mohammed A\\
+Assistant Professor\\
+Department of Computer Science and Engineering\\
+College of Engineering Trivandrum
+
+\end{frame}
+
+%------------------------------------------------
+% Slide 2 – Contents
+%------------------------------------------------
+\begin{frame}{Contents}
+\tableofcontents
+\end{frame}
+
+%================================================
+\section{Introduction}
+%================================================
+
+%------------------------------------------------
+% Slide 3 – Introduction & Domain of Interest
+%------------------------------------------------
+\begin{frame}{Introduction}
+
+\textbf{Delay-Tolerant Networking (DTN)} enables reliable communication in environments with intermittent connectivity by using the \textbf{Store--Carry--Forward} communication model.
+
+\vspace{0.3cm}
+
+\textbf{Domain of Interest}
+
+\begin{itemize}
+    \item Delay-Tolerant Networking (DTN)
+    \item Embedded Systems \& FreeRTOS
+    \item TinyML \& Edge AI
+    \item Cybersecurity
+    \item Space and Disaster Communication
+\end{itemize}
+
+\end{frame}
+
+%================================================
+\section{Problem Context}
+%================================================
+
+%------------------------------------------------
+% Slide 4 – Problem Context
+%------------------------------------------------
+\begin{frame}{Problem Context}
+
+\textbf{Mission-critical networks require reliable communication despite unstable connectivity and dynamic network conditions.}
+
+\vspace{0.3cm}
+
+\textbf{Key Challenges}
+
+\begin{itemize}
+    \item Intermittent links and unpredictable node failures
+    \item Static DTN routing with limited adaptability
+    \item No autonomous self-healing or intelligent route selection
+    \item Poor priority handling and buffer utilization
+    \item Limited trust-aware security for forwarding nodes
+\end{itemize}
+
+\end{frame}
+
+%================================================
+\section{Literature Survey}
+%================================================
+%------------------------------------------------
+% Slide 14 – Paper 10
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Embedded AI: Integrating TinyML in Resource-Constrained IoT Devices}
+
+\textit{IEEE Embedded Systems Research (2025)}
+
+\vspace{0.2cm}
+
+Presents lightweight TinyML deployment using TensorFlow Lite Micro, pruning, and quantization for resource-constrained embedded platforms.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Suitable for ESP32-class hardware
+    \item Efficient model optimization
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item No DTN integration
+    \item No autonomous self-healing communication
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 13 – Paper 9
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{TinyML for Edge Networks: Challenges and Future Directions}
+
+\textit{IEEE ICCECE (2025)}
+
+\vspace{0.2cm}
+
+Reviews model compression, quantization, TensorFlow Lite Micro, and memory-efficient deployment techniques for embedded AI.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Optimized embedded AI deployment
+    \item Low-memory inference techniques
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item No networking application
+    \item Does not address DTN routing
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 12 – Paper 8
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Distributed TinyML on Resource-Constrained IoT Sensor Networks}
+
+\textit{IEEE World Forum on IoT (2024)}
+
+\vspace{0.2cm}
+
+Demonstrates distributed TinyML inference across multiple microcontrollers for collaborative edge intelligence in IoT systems.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item TinyML on low-power MCUs
+    \item Energy-efficient inference
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item Focused on sensing applications
+    \item No DTN communication framework
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 11 – Paper 7
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Optimal Routing with Machine Learning Classification in DTNs}
+
+\textit{IEEE ICICNIS Conference (2024)}
+
+\vspace{0.2cm}
+
+Applies Random Forest, SVM, and XGBoost models to predict optimal forwarding nodes using DTN network parameters.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item AI-assisted adaptive routing
+    \item Higher delivery performance
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item Evaluated only in simulation
+    \item No embedded implementation
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 10 – Paper 6
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Spray and Wait Routing: Controlled Bundle Replication}
+
+\textit{Spyropoulos, Psounis \& Raghavendra (IEEE, 2023)}
+
+\vspace{0.2cm}
+
+Reduces network congestion by limiting the number of replicated bundles before waiting for successful delivery.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Low bandwidth consumption
+    \item Simple routing strategy
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item Static forwarding policy
+    \item No adaptive route selection
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+% Slide 9 – Paper 5
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{MaxProp Routing: Priority-Based Bundle Forwarding}
+
+\textit{John Burgess et al. (IEEE INFOCOM, 2023)}
+
+\vspace{0.2cm}
+
+Prioritizes DTN bundles using delivery likelihood and acknowledgement history while managing limited buffer resources.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Priority-aware forwarding
+    \item Improved delivery ratio
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item High computational overhead
+    \item Large buffer requirement
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 8 – Paper 4
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{PRoPHET Routing: Probabilistic Routing in Intermittent Networks}
+
+\textit{Anders Lindgren et al. (IEEE DTN Routing, 2023)}
+
+\vspace{0.2cm}
+
+Predicts successful bundle delivery using historical encounters between neighbouring DTN nodes to improve forwarding efficiency.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Learns encounter history
+    \item Better than flooding-based routing
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item Cannot predict sudden failures
+    \item Ignores battery and buffer conditions
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 7 – Paper 3
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Contact Graph Routing (CGR): Predictive Routing for Space DTNs}
+
+\textit{CCSDS / NASA Deep Space Networking (2022)}
+
+\vspace{0.2cm}
+
+Computes optimal forwarding paths using scheduled future communication opportunities between satellites and spacecraft.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Efficient deep-space routing
+    \item Low routing overhead
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item Requires predefined contact schedules
+    \item Unsuitable for dynamic terrestrial DTNs
+\end{itemize}
+
+\end{frame}
+%------------------------------------------------
+% Slide 6 – Paper 2
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Bundle Protocol Security (BPsec): Security Framework for DTNs}
+
+\textit{Edward Birrane, Kevin McKeever (RFC 9172, 2022)}
+
+\vspace{0.2cm}
+
+Introduces authentication, integrity verification, and confidential transmission for DTN bundles through cryptographic security blocks.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item End-to-end authentication
+    \item Secure bundle integrity
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item No trust-aware routing
+    \item Static security policies
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+% Slide 5 – Paper 1
+%------------------------------------------------
+\begin{frame}{Literature Survey}
+
+\textbf{Bundle Protocol Version 7 (BPv7): The Standard Protocol for Delay-Tolerant Networking}
+
+\textit{Scott Burleigh, Kevin Fall, Edward Birrane (RFC 9171, 2022)}
+
+\vspace{0.2cm}
+
+Defines the standardized DTN communication protocol using the \textbf{Store--Carry--Forward} mechanism for reliable communication in disrupted networks.
+
+\vspace{0.2cm}
+
+\textbf{Merits}
+\begin{itemize}
+    \item Reliable bundle-based communication
+    \item Supports intermittent connectivity
+\end{itemize}
+
+\textbf{Demerits}
+\begin{itemize}
+    \item No intelligent routing
+    \item No autonomous self-healing
+\end{itemize}
+
+\end{frame}
+
+%================================================
+\section{Research Gap}
+%================================================
+
+%------------------------------------------------
+% Slide 15 – Research Gap
+%------------------------------------------------
+\begin{frame}{Research Gap}
+
+\textbf{Limitations Identified from Existing Literature}
+
+\vspace{0.2cm}
+
+\begin{itemize}
+    \item DTN protocols rely on static or probabilistic routing.
+    \item AI-based routing is mostly limited to simulations.
+    \item TinyML research focuses on sensing rather than networking.
+    \item Existing systems lack autonomous self-healing.
+    \item No unified embedded DTN framework with security and AI.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Our Contribution:} \textit{Aegis integrates DTN, TinyML, FreeRTOS, self-healing, priority-aware routing, and AES-256 security into a single ESP32-based embedded framework.}
+
+\end{frame}
+%================================================
+\section{Problem Statement}
+%================================================
+
+%------------------------------------------------
+% Slide 16 – Problem Statement
+%------------------------------------------------
+\begin{frame}{Problem Statement}
+
+\vfill
+
+\begin{block}{Problem}
+\centering
+The problem is to design and develop a secure, intelligent, and autonomous \textbf{Delay-Tolerant Networking (DTN)} framework that leverages \textbf{TinyML-assisted adaptive routing}, \textbf{self-healing communication}, and \textbf{priority-aware bundle management} to ensure reliable data delivery in environments with intermittent connectivity and dynamic node failures.
+\end{block}
+
+\vfill
+
+\end{frame}
+%================================================
+\section{Project Objectives}
+%================================================
+
+%------------------------------------------------
+% Slide 17 – Project Objectives
+%------------------------------------------------
+\begin{frame}{Project Objectives}
+
+\begin{block}{Primary Objective}
+Develop an intelligent, secure, and self-healing DTN framework on ESP32 using FreeRTOS and TinyML.
+\end{block}
+
+\vspace{0.2cm}
+
+\textbf{Specific Objectives}
+\begin{itemize}
+    \item Implement AI-assisted adaptive routing
+    \item Enable autonomous self-healing communication
+    \item Prioritize mission-critical data bundles
+    \item Optimize buffer and resource utilization
+    \item Integrate AES-256 security and trust-based routing
+\end{itemize}
+
+\end{frame}
+
+%================================================
+\section{Proposed Solution Methodology}
+%================================================
+
+%------------------------------------------------
+% Slide 17 – Overall Methodology
+%------------------------------------------------
+\begin{frame}{Proposed Solution Methodology}
+
+\begin{block}{Workflow}
+\small
+Node Discovery $\rightarrow$ Network Monitoring $\rightarrow$ TinyML Prediction $\rightarrow$ Adaptive Route Selection $\rightarrow$ Priority Scheduling $\rightarrow$ Secure DTN Transmission
+\end{block}
+
+\vspace{0.3cm}
+
+\textbf{Methodology Steps}
+\begin{itemize}
+    \item Discover neighbouring DTN nodes using heartbeat packets
+    \item Continuously monitor link quality and node status
+    \item Predict the best forwarding node using TinyML
+    \item Prioritize mission-critical bundles before transmission
+    \item Encrypt and forward bundles using Store--Carry--Forward
+\end{itemize}
+
+\end{frame}
+
+%------------------------------------------------
+% Slide 18 – Algorithm 1
+%------------------------------------------------
+\begin{frame}{Algorithm 1: Neighbor Discovery}
+
+\textbf{Objective:} Identify and maintain active neighbouring DTN nodes.
+\vspace{0.15cm}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.99\linewidth,height=5.9cm,keepaspectratio]{Neighbour Discovery.png}
+    \caption{Neighbor Discovery Flow Diagram}
+\end{figure}
+
+\end{frame}
+
+
+%------------------------------------------------
+% Slide 19 – Algorithm 2
+%------------------------------------------------
+\begin{frame}{Algorithm 2: TinyML Adaptive Routing}
+
+\textbf{Objective:} Predict the optimal next-hop node.
+
+\vspace{0.2cm}
+
+\textbf{Inputs:} RSSI, Latency, Buffer, Battery, Trust
+
+\vspace{0.15cm}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.72\linewidth,height=5.0cm,keepaspectratio]{TinyML.png}
+    \caption{TinyML-Based Adaptive Routing Flowchart}
+\end{figure}
+
+\end{frame}
+
+
+%------------------------------------------------
+% Slide 20 – Algorithm 3
+%------------------------------------------------
+\begin{frame}{Algorithm 3: Self-Healing Mechanism}
+
+\textbf{Objective:} Restore communication after node failure.
+\vspace{0.15cm}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.99\linewidth,height=5.9cm,keepaspectratio]{Self Healing.png}
+    \caption{Self-Healing Communication Mechanism}
+\end{figure}
+
+\end{frame}
+%================================================
+\section{System Architecture}
+%================================================
+
+%------------------------------------------------
+% Slide 21 – System Architecture
+%------------------------------------------------
+\begin{frame}{System Architecture}
+
+\begin{figure}
+    \centering
+    \includegraphics[height=0.78\textheight,keepaspectratio]{Architecturev2.png}
+    \caption{Proposed System Architecture}
+\end{figure}
+
+\end{frame}
+
+%------------------------------------------------
+% Slide 22 – Block Diagram
+%------------------------------------------------
+\begin{frame}{Block Diagram of Proposed System}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth,height=7.3cm,keepaspectratio]{block.png}
+    \caption{Block Diagram of the Proposed DTN System}
+\end{figure}
+
+\end{frame}
+%================================================
+\section{Project Planning}
+%================================================
+
+%------------------------------------------------
+% Slide 23 – Project Planning
+%------------------------------------------------
+\begin{frame}[t]{Project Planning \& Task Allocation}
+
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.25}
+
+\begin{block}{1. Project Schedule}
+\scriptsize
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}llccccccc}
+
+\textcolor{black}{\textbf{Phase}} &
+\textcolor{black}{\textbf{Activity}} &
+\textcolor{black}{\textbf{Sep}} &
+\textcolor{black}{\textbf{Oct}} &
+\textcolor{black}{\textbf{Nov}} &
+\textcolor{black}{\textbf{Dec}} &
+\textcolor{black}{\textbf{Jan}} &
+\textcolor{black}{\textbf{Feb}} &
+\textcolor{black}{\textbf{Mar}} \\
+
+\textbf{Planning} & Literature Survey
+    & \cellcolor{-} & & & & & & \\
+& System Design
+    & \cellcolor{-} & \cellcolor{-} & & & & & \\ \hline
+
+\textbf{Development} & DTN Protocol Implementation
+    & & \cellcolor{-} & \cellcolor{-} & & & & \\
+& TinyML Model Development
+    & & & \cellcolor{-} & \cellcolor{-} & & & \\
+& ESP32 + FreeRTOS Integration
+    & & & & \cellcolor{-} & \cellcolor{-} & & \\
+& Self-Healing Routing
+    & & & & & \cellcolor{-} & \cellcolor{-} & \\ \hline
+
+\textbf{Testing} & System Integration \& Testing
+    & & & & & & \cellcolor{-} & \cellcolor{-} \\
+& Performance Evaluation
+    & & & & & & \cellcolor{-} & \cellcolor{-} \\
+
+\end{tabular*}
+\end{block}
+
+\begin{block}{2. Team Responsibilities}
+\scriptsize
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}ll}
+
+\textcolor{black}{\textbf{Team Member}} &
+\textcolor{black}{\textbf{Primary Responsibility}} \\
+
+
+\textbf{Abhinav K P} & TinyML \& System Architecture \\
+\textbf{Akash B Mohan} & Self-Healing Routing \& Literature Survey \\
+\textbf{Alen K Raju} & Security Layer \& System Integration \\
+\textbf{Janbaas Jamal K K} & ESP32, FreeRTOS \& DTN Communication \\
+\end{tabular*}
+\end{block}
+
+\end{frame}
+
+%================================================
+\section{Conclusion}
+%================================================
+
+%------------------------------------------------
+% Slide 24 – Conclusion
+%------------------------------------------------
+\begin{frame}{Conclusion}
+
+\begin{itemize}
+    \item Proposed an intelligent and secure embedded DTN framework for disruption-prone networks.
+    \item Integrates TinyML-based adaptive routing with autonomous self-healing communication.
+    \item Enables priority-aware bundle management and AES-256 secure data transmission.
+    \item Targets real-time deployment on ESP32 using FreeRTOS for resilient IoT applications.
+\end{itemize}
+
+\end{frame}
+%================================================
+\section{References}
+%================================================
+
+%------------------------------------------------
+% Slide 24 – References
+%------------------------------------------------
+\begin{frame}{References}
+\tiny
+\setlength{\baselineskip}{8.8pt}
+
+[1] ``TinyML for Edge Networks: Challenges and Future Directions,'' V. M. R. Tummala, S. Korada, S. P. Lingamallu, B. S. Hari, and A. Hazra, \textit{Proc. IEEE ICCECE}, 2025.\\
+
+[2] ``Embedded AI: Integrating TinyML in Resource-Constrained IoT Devices,'' M. Sharma, R. Patel, and K. Verma, \textit{Proc. IEEE IMC-SSGP}, 2025.\\
+
+[3] ``TinyML on Microcontrollers: Energy-Efficient Real-Time Incremental Learning,'' A. Kumar, P. Nair, and S. Reddy, \textit{Proc. IEEE ICSCN}, 2025.\\
+
+[4] ``Distributed TinyML on Resource-Constrained IoT Sensor Networks,'' J. Smith, L. Chen, and R. Brown, \textit{Proc. IEEE WF-IoT}, 2024.\\
+
+[5] ``Optimal Routing with Machine Learning Classification in Delay-Tolerant Networks,'' Y. Zhang, H. Liu, and X. Wang, \textit{Proc. IEEE ICICNIS}, 2024.\\
+
+[6] ``PRoPHET Routing Protocol for Intermittently Connected Networks,'' A. Lindgren, A. Doria, and O. Schel\'en, \textit{IEEE Trans. Mobile Computing}, 2023.\\
+
+[7] ``MaxProp: Routing for Vehicle-Based Delay-Tolerant Networks,'' J. Burgess, B. Gallagher, D. Jensen, and B. N. Levine, \textit{Proc. IEEE INFOCOM}, 2023.\\
+
+[8] ``Spray and Wait: An Efficient Routing Scheme for Delay-Tolerant Networks,'' T. Spyropoulos, K. Psounis, and C. S. Raghavendra, \textit{Proc. IEEE}, 2023.\\
+
+[9] ``Bundle Protocol Security (BPsec),'' E. Birrane and K. McKeever, \textit{IETF RFC 9172}, 2022.\\
+
+[10] ``Bundle Protocol Version 7,'' S. Burleigh, K. Fall, and E. Birrane, \textit{IETF RFC 9171}, 2022.
+
+\end{frame}
+\end{document}

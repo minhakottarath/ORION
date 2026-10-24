@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORION // Industrial Multi-Agent RAG Assistant</title>
+  <meta name="description" content="Fully offline, secure, and intelligent multi-agent RAG decision support console for industrial plant technicians and engineers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Industrial Scanline Overlay -->
+  <div class="hud-scanline"></div>
+
+  <!-- Main System Header -->
+  <header class="hud-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <span class="pulse-indicator"></span>
+        <div class="brand-title">ORION // AGENT-RAG</div>
+      </div>
+      <div class="system-tagline">OFFLINE INDUSTRIAL DECISION SUPPORT // AIR-GAPPED EDGE NODE</div>
+    </div>
+    
+    <div class="header-status-panel">
+      <div class="status-item" id="status-airgap">
+        <span class="status-label">AIR-GAP SECURITY:</span>
+        <span class="status-val secure">100% OFFLINE</span>
+      </div>
+      <div class="status-item" id="status-llm">
+        <span class="status-label">LOCAL ENGINE:</span>
+        <span class="status-val active" id="llm-model-name">Ollama / Embedded</span>
+      </div>
+      <div class="status-item" id="status-db">
+        <span class="status-label">RAG STORE:</span>
+        <span class="status-val active" id="db-chunk-count">ChromaDB Sync</span>
+      </div>
+      <button class="hud-btn small outline" id="btn-reindex-kb" title="Re-index Knowledge Base">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        SYNC KB
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="hud-nav">
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-console" id="tab-btn-console">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        OPERATOR CONSOLE
+      </button>
+      <button class="nav-tab" data-tab="tab-kb" id="tab-btn-kb">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        KNOWLEDGE BASE & SOPS (<span id="nav-doc-count">4</span>)
+      </button>
+      <button class="nav-tab" data-tab="tab-feedback" id="tab-btn-feedback">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        VALIDATED FIELD UPDATES (<span id="nav-feedback-count">0</span>)
+      </button>
+    </div>
+    <div class="emergency-tel">
+      <span class="tel-bullet"></span> FACILITY NODE: BLOCK-04 // TURBINE & HPU BAY
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="hud-main">
+
+    <!-- TAB 1: OPERATOR CONSOLE -->
+    <section class="tab-content active" id="tab-console">
+      <div class="console-grid">
+        
+        <!-- Left Panel: Multimodal Input Deck -->
+        <div class="panel-card input-deck">
+          <div class="panel-header">
+            <span class="panel-icon">⚙</span>
+            <span class="panel-title">MULTIMODAL QUERY ACQUISITION</span>
+            <span class="panel-tag">TEXT // VOICE // IMAGE</span>
+          </div>
+
+          <!-- Diagnostic Quick Presets -->
+          <div class="presets-container">
+            <div class="preset-label">QUICK TELEMETRY & INCIDENT PRESETS:</div>
+            <div class="preset-chips">
+              <button class="preset-chip" data-query="SOP for Hydraulic Power Unit pressure fluctuation between 140 and 210 bar" data-eq="HPU-SERIES-900">
+                <span class="chip-code">SOP-702</span> HPU Pressure Fluctuation
+              </button>
+              <button class="preset-chip" data-query="Turbine generator T800 high vibration alarm 1X RPM dominant peak bearing temperature" data-eq="TITAN-800">
+                <span class="chip-code">MAN-T800</span> Turbine Vibration Alert
+              </button>
+              <button class="preset-chip" data-query="Centrifugal pump cavitation sound marble rattling seal leak NPSH" data-eq="BFP-02B">
+                <span class="chip-code">INC-2024-88</span> Pump Cavitation & Seal
+              </button>
+              <button class="preset-chip" data-query="VFD fault 2310 overcurrent trip and DC bus voltage ripple high" data-eq="VFD-MCC4">
+                <span class="chip-code">LOG-409</span> VFD Overcurrent Trip
+              </button>
+            </div>
+          </div>
+
+          <!-- Multimodal Input Form -->
+          <form id="query-form" class="query-form">
+            <!-- Textarea for Technician Query -->
+            <div class="input-group">
+              <label for="technician-query" class="input-label">TECHNICIAN FIELD QUERY / SYMPTOM REPORT:</label>
+              <textarea 
+                id="technician-query" 
+                class="hud-textarea" 
+                rows="4" 
+                placeholder="Describe mechanical symptom, error code, or SOP request (e.g. 'Hydraulic pressure fluctuating on HPU-900. Need relief valve test procedure')..."
+                required
+              ></textarea>
+            </div>
+
+            <!-- Voice & Image Multimodal Row -->
+            <div class="multimodal-row">
+              
+              <!-- Voice Capture Box -->
+              <div class="multimodal-box voice-box">
+                <div class="box-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x2="16" y1="23" x2="8" y2="23"/></svg>
+                  WHISPER STT VOICE INPUT
+                </div>
+                <div class="audio-control-area">
+                  <button type="button" class="mic-btn" id="btn-record-audio" title="Record Voice Note">
+                    <span class="mic-icon">🎙</span>
+                    <span class="mic-text" id="mic-status-text">RECORD NOTE</span>
+                  </button>
+                  <canvas id="waveform-canvas" width="180" height="34"></canvas>
+                </div>
+                <div class="transcript-preview" id="voice-transcript-display">
+                  <span class="transcript-placeholder">No voice input captured. Click 'RECORD NOTE' to dictate.</span>
+                </div>
+              </div>
+
+              <!-- Image & Vision Box -->
+              <div class="multimodal-box image-box">
+                <div class="box-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  IMAGE & OCR VISION
+                </div>
+                <div class="image-dropzone" id="image-dropzone">
+                  <input type="file" id="image-file-input" accept="image/*" style="display:none;">
+                  <div class="dropzone-idle" id="dropzone-idle">
+                    <span class="drop-icon">📷</span>
+                    <span class="drop-prompt">DRAG & DROP EQUIPMENT PHOTO OR <a href="#" id="browse-image-link">BROWSE</a></span>
+                    <span class="drop-hint">Gauge dials, part wear, error screens</span>
+                  </div>
+                  <div class="dropzone-preview" id="dropzone-preview" style="display:none;">
+                    <img id="image-preview-elem" src="" alt="Equipment Preview">
+                    <div class="preview-overlay">
+                      <span id="preview-filename">image.jpg</span>
+                      <button type="button" class="btn-clear-img" id="btn-clear-img">✕</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Submit Button & Action Deck -->
+            <div class="form-actions">
+              <button type="submit" class="hud-btn primary large" id="btn-execute-query">
+                <span class="btn-glow"></span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                DISPATCH MULTI-AGENT PIPELINE
+              </button>
+              <button type="button" class="hud-btn secondary" id="btn-clear-all">
+                RESET CONSOLE
+              </button>
+            </div>
+          </form>
+
+        </div>
+
+        <!-- Right Panel: Agent Orchestrator & Live Diagnostic Telemetry -->
+        <div class="panel-card diagnostic-deck">
+          <div class="panel-header">
+            <span class="panel-icon">⚡</span>
+            <span class="panel-title">AGENT ORCHESTRATOR & VERIFIED DECISION SUPPORT</span>
+            <span class="panel-tag live-tag" id="pipeline-status-badge">READY</span>
+          </div>
+
+          <!-- Multi-Agent 3-Stage Progress Timeline -->
+          <div class="agent-timeline">
+            <div class="agent-node" id="node-retrieval">
+              <div class="node-header">
+                <span class="node-badge">STAGE 1</span>
+                <span class="node-title">RETRIEVAL AGENT</span>
+                <span class="node-status" id="retrieval-status">IDLE</span>
+              </div>
+              <div class="node-body">
+                <div class="node-meter"><div class="meter-fill" id="meter-retrieval"></div></div>
+                <div class="node-desc" id="retrieval-desc">ChromaDB semantic search & hybrid rerank</div>
+              </div>
+            </div>
+
+            <div class="timeline-connector"></div>
+
+            <div class="agent-node" id="node-reasoning">
+              <div class="node-header">
+                <span class="node-badge">STAGE 2</span>
+                <span class="node-title">REASONING AGENT</span>
+                <span class="node-status" id="reasoning-status">IDLE</span>
+              </div>
+              <div class="node-body">
+                <div class="node-meter"><div class="meter-fill" id="meter-reasoning"></div></div>
+                <div class="node-desc" id="reasoning-desc">Root Cause Analysis & SOP step synthesis</div>
+              </div>
+            </div>
+
+            <div class="timeline-connector"></div>
+
+            <div class="agent-node" id="node-verification">
+              <div class="node-header">
+                <span class="node-badge">STAGE 3</span>
+                <span class="node-title">VERIFICATION AGENT</span>
+                <span class="node-status" id="verification-status">IDLE</span>
+              </div>
+              <div class="node-body">
+                <div class="node-meter"><div class="meter-fill" id="meter-verification"></div></div>
+                <div class="node-desc" id="verification-desc">Hallucination audit & citation groundedness</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Results Section -->
+          <div class="diagnostic-result-area" id="diagnostic-result-area">
+            
+            <!-- Default Welcome Placeholder -->
+            <div class="result-placeholder" id="result-placeholder">
+              <div class="tech-radar-ring"></div>
+              <h3>AWAITING TECHNICIAN INSTRUCTION</h3>
+              <p>Select a quick telemetry preset or enter field symptoms. ORION will retrieve relevant SOPs, synthesize root-cause diagnostics, and verify citation evidence 100% offline.</p>
+            </div>
+
+            <!-- Active Results Container (Hidden until executed) -->
+            <div class="result-content" id="result-content" style="display:none;">
+              
+              <!-- Verification Banner -->
+              <div class="verification-badge-card" id="verification-card">
+                <div class="vcard-left">
+                  <div class="vcard-icon" id="vcard-icon">✓</div>
+                  <div class="vcard-text">
+                    <div class="vcard-title" id="vcard-status">GROUNDED & VERIFIED</div>
+                    <div class="vcard-subtitle" id="vcard-audit-text">Hallucination risk: LOW. All claims cross-referenced with OEM documentation.</div>
+                  </div>
+                </div>
+                <div class="vcard-score">
+                  <span class="score-val" id="vcard-score-num">96%</span>
+                  <span class="score-label">GROUNDEDNESS</span>
+                </div>
+              </div>
+
+              <!-- Main Answer Display (Markdown formatted) -->
+              <div class="answer-card">
+                <div class="answer-header">
+                  <span class="ans-tag">FIELD RESOLUTION ADVICE</span>
+                  <span class="ans-time" id="ans-timestamp">JUST NOW</span>
+                </div>
+                <div class="markdown-body" id="answer-markdown">
+                  <!-- Rendered answer appears here -->
+                </div>
+              </div>
+
+              <!-- Source Citations Drawer -->
+              <div class="citations-card">
+                <div class="citations-header">
+                  <span class="citations-title">EVIDENCE SOURCES & OEM PROVENANCE</span>
+                  <span class="citations-count" id="citations-count">0 SOURCES</span>
+                </div>
+                <div class="sources-list" id="sources-list">
+                  <!-- Source pills appear here -->
+                </div>
+              </div>
+
+              <!-- Technician Action & Feedback Bar -->
+              <div class="resolution-feedback-bar">
+                <div class="feedback-prompt">
+                  <strong>TECHNICIAN SIGN-OFF:</strong> Did this procedure resolve the plant anomaly?
+                </div>
+                <div class="feedback-buttons">
+                  <button class="hud-btn success" id="btn-feedback-confirm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    CONFIRM & LOG RESOLUTION
+                  </button>
+                  <button class="hud-btn warning" id="btn-feedback-modify">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"/></svg>
+                    SUBMIT FIELD CORRECTION
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: KNOWLEDGE BASE & SOPS -->
+    <section class="tab-content" id="tab-kb">
+      <div class="kb-container">
+        <div class="kb-header-panel">
+          <div>
+            <h2>OFFLINE INDUSTRIAL KNOWLEDGE BASE</h2>
+            <p>Air-gapped repository of Standard Operating Procedures (SOPs), OEM Manuals, Incident Reports, and Telemetry Logs stored in local ChromaDB.</p>
+          </div>
+          <div class="kb-actions">
+            <button class="hud-btn outline" id="btn-upload-doc-trigger">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              INGEST NEW MANUAL / SOP
+            </button>
+            <input type="file" id="kb-file-input" accept=".md,.txt,.json,.csv,.pdf" style="display:none;">
+          </div>
+        </div>
+
+        <div class="kb-stats-grid">
+          <div class="stat-box">
+            <div class="stat-num" id="stat-total-chunks">0</div>
+            <div class="stat-lbl">EMBEDDED CHUNKS</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" id="stat-total-docs">0</div>
+            <div class="stat-lbl">INDEXED INDUSTRIAL DOCUMENTS</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num" id="stat-engine-type">ChromaDB</div>
+            <div class="stat-lbl">VECTOR STORE ENGINE</div>
+          </div>
+        </div>
+
+        <div class="kb-docs-table-wrapper">
+          <table class="hud-table" id="kb-docs-table">
+            <thead>
+              <tr>
+                <th>DOCUMENT ID</th>
+                <th>DOCUMENT TITLE</th>
+                <th>FILE NAME</th>
+                <th>TYPE</th>
+                <th>EQUIPMENT DOMAIN</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="kb-docs-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: VALIDATED FIELD UPDATES -->
+    <section class="tab-content" id="tab-feedback">
+      <div class="feedback-container">
+        <div class="kb-header-panel">
+          <div>
+            <h2>CONTINUOUS LEARNING: VALIDATED FIELD EXPERIENCES</h2>
+            <p>Every technician sign-off and field solution is stored in the Validated Knowledge Base and incrementally re-indexed into ChromaDB for future RAG queries.</p>
+          </div>
+        </div>
+
+        <div class="feedback-list" id="feedback-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: Technician Field Resolution Sign-off -->
+  <div class="hud-modal-backdrop" id="feedback-modal" style="display:none;">
+    <div class="hud-modal">
+      <div class="modal-header">
+        <span class="modal-title">TECHNICIAN FIELD VALIDATION & RAG RE-INDEXING</span>
+        <button class="modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <form id="feedback-form" class="modal-body">
+        <div class="input-group">
+          <label class="input-label">ORIGINAL QUERY / SYMPTOM:</label>
+          <input type="text" id="modal-query-preview" class="hud-input" readonly>
+        </div>
+        <div class="input-group">
+          <label class="input-label">EQUIPMENT ASSET ID:</label>
+          <input type="text" id="modal-equipment-id" class="hud-input" value="HPU-SERIES-900" required>
+        </div>
+        <div class="input-group">
+          <label class="input-label">TECHNICIAN NAME & CALLSIGN:</label>
+          <input type="text" id="modal-tech-name" class="hud-input" value="Lead Reliability Tech" required>
+        </div>
+        <div class="input-group">
+          <label class="input-label">VERDICT:</label>
+          <select id="modal-verdict" class="hud-select">
+            <option value="confirmed">Confirmed - Diagnostic Succeeded</option>
+            <option value="modified">Modified - Field Adjustments Applied</option>
+            <option value="disputed">Disputed - Alternative Defect Discovered</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label class="input-label">VERIFIED FIELD CORRECTIVE ACTION (Will be re-indexed into ChromaDB):</label>
+          <textarea id="modal-technician-notes" class="hud-textarea" rows="3" placeholder="Detail the physical fix applied (e.g., 'Replaced Schrader valve seal on Accumulator ACC-1 and torqued PRV-12 flange to 35 Nm. Restored pressure to 180 bar')..." required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="hud-btn secondary" id="modal-cancel-btn">CANCEL</button>
+          <button type="submit" class="hud-btn primary" id="modal-submit-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            SUBMIT & RE-INDEX RAG DATABASE
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/audio_recorder.js"></script>
+  <script src="js/vision_handler.js"></script>
+  <script src="js/agent_stream.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
