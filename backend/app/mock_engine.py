@@ -1,6 +1,7 @@
 """
-Industrial Mock Engine
-Generates realistic, grounded industrial diagnostic responses when Ollama is offline or warming up.
+Industrial Mock Engine (DEPRECATED & DISABLED)
+Mock responses and hardcoded answers have been removed from the answer-generation path.
+All diagnostic queries must be processed dynamically via the local LLM and vector store.
 """
 from typing import List, Dict, Any
 
@@ -11,17 +12,16 @@ class IndustrialMockEngine:
         retrieved_chunks: List[Dict[str, Any]],
         vision_context: str = ""
     ) -> str:
-        """
-        Synthesizes an industrial diagnostic response based on retrieved evidence.
-        """
-        query_lower = query.lower()
-        
-        # Primary document reference
-        top_doc = retrieved_chunks[0] if retrieved_chunks else None
-        top_meta = top_doc.get("metadata", {}) if top_doc else {}
-        doc_title = top_meta.get("title", "Standard Industrial Knowledge Base")
-        doc_id = top_meta.get("doc_id", "DOC-REF")
-        section = top_meta.get("section", "Standard Operating Procedure")
+        raise NotImplementedError(
+            "Hardcoded mock responses have been permanently disabled in ORION. "
+            "All queries must be dynamically processed using the local LLM."
+        )
+
+    @staticmethod
+    def generate_verification(reasoning_text: str, retrieved_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        raise NotImplementedError(
+            "Hardcoded mock verification has been permanently disabled in ORION."
+        )
 
         # 1. Hydraulic / Pressure Fluctuations
         if any(k in query_lower for k in ["hydraulic", "pressure", "hpu", "prv", "accumulator", "oscillation", "bar"]):

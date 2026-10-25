@@ -43,7 +43,5 @@ class AudioTranscriber:
             except Exception:
                 pass
 
-        # 2. Heuristic speech packet extraction fallback
-        # In an edge environment where Whisper binary is pending download,
-        # detect basic audio header and return voice prompt
-        return "Technician Voice Query: Turbine generator vibration alarm and high bearing temperature detected during full load test."
+        # 2. If Whisper is not installed or loaded, report honestly without fabricating text
+        return "[Voice transcription unavailable: local Whisper STT engine is not loaded on this node.]"

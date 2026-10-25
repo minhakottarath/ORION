@@ -63,22 +63,41 @@ class AgentStreamController {
   }
 
   renderResults(data) {
+    const isInsufficient = data.status === 'INSUFFICIENT_EVIDENCE' || (data.verification && data.verification.status === 'INSUFFICIENT_EVIDENCE');
+    const isError = data.status === 'ERROR' || (data.verification && data.verification.status === 'ERROR');
+
     // 1. Finalize Retrieval Node
     if (this.nodeRetrieval) {
       this.nodeRetrieval.classList.remove('active');
       this.nodeRetrieval.classList.add('completed');
-      this.statusRetrieval.textContent = 'DONE';
-      this.meterRetrieval.style.width = '100%';
-      this.descRetrieval.textContent = `Found ${data.sources.length} matching industrial chunks.`;
+      if (isInsufficient) {
+        this.statusRetrieval.textContent = 'NO MATCH';
+        this.meterRetrieval.style.width = '100%';
+        this.descRetrieval.textContent = 'No chunks met relevance threshold.';
+      } else {
+        this.statusRetrieval.textContent = 'DONE';
+        this.meterRetrieval.style.width = '100%';
+        this.descRetrieval.textContent = `Found ${data.sources.length} matching industrial chunks.`;
+      }
     }
 
     // 2. Finalize Reasoning Node
     if (this.nodeReasoning) {
       this.nodeReasoning.classList.remove('active');
       this.nodeReasoning.classList.add('completed');
-      this.statusReasoning.textContent = 'DONE';
-      this.meterReasoning.style.width = '100%';
-      this.descReasoning.textContent = `Synthesized RCA & SOP steps (${data.total_latency_ms} ms).`;
+      if (isInsufficient) {
+        this.statusReasoning.textContent = 'REFUSED';
+        this.meterReasoning.style.width = '100%';
+        this.descReasoning.textContent = 'Refused to invent missing documentation.';
+      } else if (isError) {
+        this.statusReasoning.textContent = 'ERROR';
+        this.meterReasoning.style.width = '100%';
+        this.descReasoning.textContent = 'Reasoning error encountered.';
+      } else {
+        this.statusReasoning.textContent = 'DONE';
+        this.meterReasoning.style.width = '100%';
+        this.descReasoning.textContent = `Synthesized grounded response (${data.total_latency_ms} ms).`;
+      }
     }
 
     // 3. Finalize Verification Node
@@ -86,24 +105,52 @@ class AgentStreamController {
     if (this.nodeVerification) {
       this.nodeVerification.classList.remove('active');
       this.nodeVerification.classList.add('completed');
-      this.statusVerification.textContent = verif.status || 'VERIFIED';
-      this.meterVerification.style.width = '100%';
-      this.descVerification.textContent = `Groundedness: ${verif.groundedness_score || 94}% (Hallucination: ${verif.hallucination_risk || 'LOW'})`;
+      if (isInsufficient) {
+        this.statusVerification.textContent = 'AUDITED';
+        this.meterVerification.style.width = '100%';
+        this.descVerification.textContent = 'Refusal verified: 0 hallucinations.';
+      } else {
+        this.statusVerification.textContent = verif.status || 'VERIFIED';
+        this.meterVerification.style.width = '100%';
+        this.descVerification.textContent = `Groundedness: ${verif.groundedness_score || 0}% (Risk: ${verif.hallucination_risk || 'LOW'})`;
+      }
     }
 
     if (this.badgeStatus) {
-      this.badgeStatus.textContent = 'VERIFIED';
+      if (isInsufficient) {
+        this.badgeStatus.textContent = 'INSUFFICIENT EVIDENCE';
+        this.badgeStatus.className = 'panel-tag warning-tag';
+      } else if (isError) {
+        this.badgeStatus.textContent = 'SYSTEM ERROR';
+        this.badgeStatus.className = 'panel-tag danger-tag';
+      } else if (verif.status === 'FLAGGED_FOR_REVIEW') {
+        this.badgeStatus.textContent = 'FLAGGED FOR REVIEW';
+        this.badgeStatus.className = 'panel-tag warning-tag';
+      } else {
+        this.badgeStatus.textContent = 'VERIFIED';
+        this.badgeStatus.className = 'panel-tag live-tag';
+      }
     }
 
     // 4. Populate Verification Card
-    const score = verif.groundedness_score || 94;
-    this.vCardScoreNum.textContent = `${score}%`;
-    this.vCardStatus.textContent = (score >= 80) ? 'GROUNDED & AUDITED' : 'FLAGGED FOR REVIEW';
-    
-    if (verif.audit_checks && verif.audit_checks.length > 0) {
-      this.vCardAudit.textContent = verif.audit_checks.join(' • ');
+    if (isInsufficient) {
+      this.vCardScoreNum.textContent = 'N/A';
+      this.vCardStatus.textContent = 'INSUFFICIENT EVIDENCE';
+      this.vCardAudit.textContent = 'The knowledge base does not contain sufficient verified evidence to answer this query. Fabrication was refused.';
+    } else if (isError) {
+      this.vCardScoreNum.textContent = 'ERR';
+      this.vCardStatus.textContent = 'EXECUTION FAILURE';
+      this.vCardAudit.textContent = verif.audit_checks ? verif.audit_checks.join(' • ') : 'Component error.';
     } else {
-      this.vCardAudit.textContent = 'Hallucination risk: LOW. Technical parameters verified against OEM manuals.';
+      const score = verif.groundedness_score || 0;
+      this.vCardScoreNum.textContent = `${score}%`;
+      this.vCardStatus.textContent = (score >= 80 && !verif.hallucination_detected) ? 'GROUNDED & AUDITED' : 'FLAGGED FOR REVIEW';
+      
+      if (verif.audit_checks && verif.audit_checks.length > 0) {
+        this.vCardAudit.textContent = verif.audit_checks.join(' • ');
+      } else {
+        this.vCardAudit.textContent = 'Factual consistency cross-referenced with retrieved OEM excerpts.';
+      }
     }
 
     // 5. Render Formatted Markdown Answer
@@ -111,7 +158,7 @@ class AgentStreamController {
     this.ansTimestamp.textContent = new Date().toLocaleTimeString();
 
     // 6. Populate Source Citations
-    this.renderSources(data.sources);
+    this.renderSources(data.sources || []);
 
     // Show Result Container
     if (this.resultContainer) {
@@ -125,8 +172,8 @@ class AgentStreamController {
     this.sourcesList.innerHTML = '';
     this.citationsCount.textContent = `${sources.length} OEM SOURCES`;
 
-    if (sources.length === 0) {
-      this.sourcesList.innerHTML = '<div class="source-item" style="color:var(--text-muted);">No direct document citations matched.</div>';
+    if (!sources || sources.length === 0) {
+      this.sourcesList.innerHTML = '<div class="source-item" style="color:var(--text-muted);">No direct document citations matched or required for this response.</div>';
       return;
     }
 
@@ -135,12 +182,20 @@ class AgentStreamController {
       card.className = 'source-item';
       
       const scorePct = Math.round((src.similarity_score || 0.8) * 100);
+      let provenanceInfo = src.section || 'General';
+      if (src.page) {
+        provenanceInfo += ` • Page ${src.page}`;
+      }
+      if (src.file_name && src.file_name !== 'unknown') {
+        provenanceInfo += ` (${src.file_name})`;
+      }
+
       card.innerHTML = `
         <div class="source-top">
           <span class="source-id-badge">${src.doc_id || 'OEM-REF'}</span>
           <span class="source-score-badge">MATCH CONFIDENCE: ${scorePct}%</span>
         </div>
-        <div class="source-title-text">${src.title || 'Technical Manual'} — <span style="color:var(--accent-amber);">${src.section || 'General'}</span></div>
+        <div class="source-title-text">${src.title || 'Technical Manual'} — <span style="color:var(--accent-amber);">${provenanceInfo}</span></div>
         <div class="source-snippet">${src.snippet || ''}</div>
       `;
       this.sourcesList.appendChild(card);

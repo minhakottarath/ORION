@@ -5,6 +5,7 @@ Provides ChromaDB persistent storage with an embedded SQLite vector fallback for
 import sqlite3
 import json
 import math
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -106,11 +107,18 @@ class VectorStore:
         self,
         query_text: str,
         top_k: int = TOP_K_CHUNKS,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        min_threshold: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         """
-        Retrieves top_k relevant chunks for the query using cosine similarity.
+        Retrieves top_k relevant chunks for the query using hybrid cosine similarity and keyword matching.
+        Applies a strict relevance threshold: only chunks meeting min_threshold are returned.
         """
+        threshold = SIMILARITY_THRESHOLD if min_threshold is None else min_threshold
+        query_text = (query_text or "").strip()
+        if not query_text:
+            return []
+
         query_emb = self.embedder.get_embedding(query_text)
         
         # 1. Try ChromaDB
@@ -118,22 +126,31 @@ class VectorStore:
             try:
                 chroma_res = self.chroma_collection.query(
                     query_embeddings=[query_emb],
-                    n_results=top_k,
+                    n_results=top_k * 2,
                     where=metadata_filter if metadata_filter else None
                 )
                 results = []
                 if chroma_res and chroma_res["documents"] and len(chroma_res["documents"][0]) > 0:
                     for i in range(len(chroma_res["documents"][0])):
                         dist = chroma_res["distances"][0][i] if "distances" in chroma_res and chroma_res["distances"] else 0.5
-                        # Approximate similarity from distance
                         sim = max(0.0, 1.0 - (dist / 2.0))
-                        results.append({
-                            "id": chroma_res["ids"][0][i],
-                            "text": chroma_res["documents"][0][i],
-                            "metadata": chroma_res["metadatas"][0][i],
-                            "similarity_score": round(sim, 3)
-                        })
-                    return results
+                        
+                        doc_text = chroma_res["documents"][0][i]
+                        # Keyword overlap boost
+                        q_words = set(re.findall(r'\b[a-zA-Z0-9_\-]+\b', query_text.lower()))
+                        t_words = set(re.findall(r'\b[a-zA-Z0-9_\-]+\b', doc_text.lower()))
+                        overlap = len(q_words.intersection(t_words)) / max(1, len(q_words)) if q_words else 0
+                        final_score = round(0.75 * sim + 0.25 * overlap, 3)
+
+                        if final_score >= threshold:
+                            results.append({
+                                "id": chroma_res["ids"][0][i],
+                                "text": doc_text,
+                                "metadata": chroma_res["metadatas"][0][i],
+                                "similarity_score": final_score
+                            })
+                    results.sort(key=lambda x: x["similarity_score"], reverse=True)
+                    return results[:top_k]
             except Exception:
                 pass
 
@@ -143,11 +160,16 @@ class VectorStore:
             cursor.execute("SELECT id, text, metadata_json, embedding_json FROM document_chunks")
             rows = cursor.fetchall()
 
+        if not rows:
+            return []
+
         scored_chunks = []
+        q_words = set(re.findall(r'\b[a-zA-Z0-9_\-]+\b', query_text.lower()))
+
         for row_id, text, meta_str, emb_str in rows:
             meta = json.loads(meta_str)
             
-            # Apply metadata filter if provided with flexible matching
+            # Apply metadata filter if provided
             if metadata_filter:
                 match = True
                 for k, v in metadata_filter.items():
@@ -167,23 +189,28 @@ class VectorStore:
             emb = json.loads(emb_str)
             sim = self._cosine_similarity(query_emb, emb)
             
-            # Keyword bonus for exact industrial tag matches (hybrid search boost)
-            query_tokens = set(query_text.lower().split())
-            text_tokens = set(text.lower().split())
-            overlap = len(query_tokens.intersection(text_tokens))
-            bonus = min(0.2, overlap * 0.03)
-            final_score = min(1.0, sim + bonus)
+            # Hybrid keyword overlap boost
+            t_words = set(re.findall(r'\b[a-zA-Z0-9_\-]+\b', text.lower()))
+            overlap_ratio = len(q_words.intersection(t_words)) / max(1, len(q_words)) if q_words else 0
+            
+            # Exact technical code match bonus (e.g. PRV-12, ACC-1, T800, BFP-02B, 180 bar)
+            code_matches = sum(1 for w in q_words if len(w) > 3 and ('-' in w or any(c.isdigit() for c in w)) and w in text.lower())
+            code_bonus = min(0.15, code_matches * 0.05)
 
-            scored_chunks.append({
-                "id": row_id,
-                "text": text,
-                "metadata": meta,
-                "similarity_score": round(final_score, 3)
-            })
+            final_score = round(min(1.0, 0.70 * sim + 0.30 * overlap_ratio + code_bonus), 3)
 
-        # If metadata filter returned 0 results, fall back to unfiltered search to prevent empty results
+            # Strict relevance cutoff: Do not return irrelevant chunks
+            if final_score >= threshold:
+                scored_chunks.append({
+                    "id": row_id,
+                    "text": text,
+                    "metadata": meta,
+                    "similarity_score": final_score
+                })
+
+        # If metadata filter returned 0 results, retry without filter to check if evidence exists
         if not scored_chunks and metadata_filter:
-            return self.query(query_text=query_text, top_k=top_k, metadata_filter=None)
+            return self.query(query_text=query_text, top_k=top_k, metadata_filter=None, min_threshold=threshold)
 
         # Sort by similarity descending
         scored_chunks.sort(key=lambda x: x["similarity_score"], reverse=True)
@@ -246,6 +273,21 @@ class VectorStore:
             "documents": docs_info,
             "engine": "ChromaDB + SQLite Fallback" if self.chroma_collection else "SQLite Local Embedded Vector Store"
         }
+
+    def check_dimension_compatibility(self) -> bool:
+        """Checks if stored embeddings match current embedding model dimension."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT embedding_json FROM document_chunks LIMIT 1")
+            row = cursor.fetchone()
+            if not row:
+                return True
+            try:
+                stored_emb = json.loads(row[0])
+                test_emb = self.embedder.get_embedding("dimension check")
+                return len(stored_emb) == len(test_emb)
+            except Exception:
+                return True
 
     def _cosine_similarity(self, vec_a: List[float], vec_b: List[float]) -> float:
         if not vec_a or not vec_b or len(vec_a) != len(vec_b):
