@@ -35,11 +35,16 @@ vision_analyzer = VisionAnalyzer(llm_client)
 orchestrator = AgentOrchestrator(vector_store, llm_client)
 feedback_manager = FeedbackManager(vector_store)
 
-def index_initial_documents():
+def index_initial_documents(force: bool = False):
     """Ensures knowledge base documents are chunked and indexed on startup."""
     stats = vector_store.get_stats()
-    if stats["total_chunks"] == 0:
-        print("[ORION-INIT] Initializing knowledge base indexing from data/knowledge_base/...")
+    is_compatible = vector_store.check_dimension_compatibility()
+    if force or stats["total_chunks"] == 0 or not is_compatible:
+        if not is_compatible:
+            print("[ORION-INIT] Vector dimensions do not match current embedding model. Wiping and re-indexing...")
+            vector_store.reset()
+        else:
+            print("[ORION-INIT] Initializing knowledge base indexing from data/knowledge_base/...")
         for file in KNOWLEDGE_BASE_DIR.glob("*.*"):
             if file.suffix.lower() in [".md", ".txt", ".json", ".csv", ".pdf"]:
                 try:
@@ -162,7 +167,7 @@ async def multimodal_query(
         i_bytes = await image_file.read()
         vision_data = vision_analyzer.analyze_image(i_bytes, user_prompt=query)
 
-    meta_filter = {"equipment_type": equipment_id} if equipment_id else None
+    meta_filter = {"equipment_type": equipment_id.strip()} if equipment_id and equipment_id.strip() and equipment_id.strip() != "GEN-ASSET" else None
 
     result = orchestrator.process_query(
         query=query,

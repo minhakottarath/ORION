@@ -32,16 +32,21 @@ class RetrievalAgent:
             sources.append({
                 "chunk_id": c.get("id"),
                 "doc_id": meta.get("doc_id", "DOC"),
+                "file_name": meta.get("file_name", "unknown"),
                 "title": meta.get("title", "Document"),
                 "section": meta.get("section", "General"),
+                "page": meta.get("page"),
                 "equipment_type": meta.get("equipment_type", "Industrial Equipment"),
                 "safety_level": meta.get("safety_level", "Standard"),
                 "similarity_score": c.get("similarity_score", 0.0),
                 "snippet": c.get("text", "")[:320] + "..."
             })
 
+        has_adequate_evidence = len(chunks) > 0
+
         return {
-            "status": "COMPLETED",
+            "status": "COMPLETED" if has_adequate_evidence else "NO_EVIDENCE_FOUND",
+            "adequate_evidence": has_adequate_evidence,
             "query": query,
             "total_retrieved": len(chunks),
             "chunks": chunks,

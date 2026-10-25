@@ -22,15 +22,21 @@ CHROMADB_DIR.mkdir(parents=True, exist_ok=True)
 # Offline & Edge Execution
 AIR_GAPPED_MODE = True
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "llama3.2")
+DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "llama3.2:1b")
 DEFAULT_VISION_MODEL = os.getenv("DEFAULT_VISION_MODEL", "llama3.2-vision")
-DEFAULT_EMBEDDING_MODEL = os.getenv("DEFAULT_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+DEFAULT_EMBEDDING_MODEL = os.getenv("DEFAULT_EMBEDDING_MODEL", "nomic-embed-text:latest")
 
 # Retrieval & Thresholds
 TOP_K_CHUNKS = 4
-SIMILARITY_THRESHOLD = 0.25  # Minimum cosine similarity for relevance
+SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.32"))  # Calibrated relevance threshold for evidence
 MAX_CHUNK_SIZE = 600  # Words/tokens per chunk
 CHUNK_OVERLAP = 100
+
+# Standardized Groundedness Messages
+INSUFFICIENT_EVIDENCE_MESSAGE = (
+    "I could not find sufficient supporting information in the local knowledge base "
+    "to answer this question reliably."
+)
 
 # Server config
 HOST = "0.0.0.0"

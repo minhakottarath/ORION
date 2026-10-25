@@ -93,20 +93,28 @@ class DocumentLoader:
             return "\n".join(text_lines), metadata
 
         elif suffix == ".pdf":
-            # Basic text extraction from PDF
+            # Text extraction from PDF with page preservation
             try:
                 import pypdf
                 reader = pypdf.PdfReader(str(file_path))
-                text = ""
-                for page in reader.pages:
-                    text += page.extract_text() or ""
-                return text, metadata
-            except Exception:
-                # If pypdf is not installed, read as binary text representation
-                with open(file_path, "rb") as f:
-                    raw_bytes = f.read()
-                clean_text = "".join(chr(b) if 32 <= b <= 126 or b in (10, 13) else " " for b in raw_bytes[:10000])
-                return clean_text, metadata
+                metadata["source_type"] = "PDF Technical Document"
+                pages_data = []
+                text_parts = []
+                for idx, page in enumerate(reader.pages):
+                    page_num = idx + 1
+                    page_text = page.extract_text() or ""
+                    clean_page_text = page_text.strip()
+                    if clean_page_text:
+                        pages_data.append({"page": page_num, "text": clean_page_text})
+                        text_parts.append(f"\n--- PAGE {page_num} ---\n{clean_page_text}")
+                
+                metadata["total_pages"] = len(reader.pages)
+                metadata["pages"] = pages_data
+                combined_text = "\n".join(text_parts) if text_parts else "No readable text extracted from PDF."
+                return combined_text, metadata
+            except Exception as e:
+                print(f"[DocumentLoader] Error reading PDF {file_name}: {e}")
+                return f"[Document Error: Could not extract text from {file_name}]", metadata
 
         else:
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:

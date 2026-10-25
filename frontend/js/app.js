@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // State Tracking
   let currentLastQuery = "";
   let currentLastAnswer = "";
-  let currentEquipmentId = "HPU-SERIES-900";
+  let currentEquipmentId = "";
 
   // 2. Tab Navigation
   const tabs = document.querySelectorAll('.nav-tab');
@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
       if (queryInput) queryInput.value = '';
+      currentEquipmentId = '';
       audioHandler.clearAudio();
       visionHandler.clearImage();
       agentStream.reset();
@@ -80,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 5. Query Dispatch & Agent Orchestration
   const queryForm = document.getElementById('query-form');
+  const executeBtn = document.getElementById('btn-execute-query');
   if (queryForm) {
     queryForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -94,6 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       currentLastQuery = textQuery;
       agentStream.startPipeline();
+
+      // Prevent concurrent duplicate queries on local CPU
+      if (executeBtn) {
+        executeBtn.disabled = true;
+        executeBtn.dataset.origHtml = executeBtn.innerHTML;
+        executeBtn.innerHTML = '<span class="pulse-indicator"></span> REASONING (LOCAL LLM)...';
+      }
+      if (queryInput) queryInput.disabled = true;
 
       try {
         let resultData = null;
@@ -110,7 +120,10 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             body: formData
           });
-          if (!resp.ok) throw new Error("Multimodal query failed");
+          if (!resp.ok) {
+            const errJson = await resp.json().catch(() => ({}));
+            throw new Error(errJson.detail || "Multimodal query failed");
+          }
           resultData = await resp.json();
         } else {
           // Standard JSON Chat endpoint
@@ -119,21 +132,40 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               query: textQuery,
-              equipment_id: currentEquipmentId
+              equipment_id: currentEquipmentId || "GEN-ASSET"
             })
           });
-          if (!resp.ok) throw new Error("Chat query failed");
+          if (!resp.ok) {
+            const errJson = await resp.json().catch(() => ({}));
+            throw new Error(errJson.detail || "Chat query failed");
+          }
           resultData = await resp.json();
         }
 
         currentLastAnswer = resultData.verified_answer;
         agentStream.renderResults(resultData);
-        window.showToast("Multi-Agent verification complete. Grounded advice generated.");
+        window.showToast("Local Multi-Agent verification complete.");
 
       } catch (err) {
         console.error("Orchestrator error:", err);
-        window.showToast("Query dispatch encountered an error. Check backend connection.");
-        agentStream.reset();
+        window.showToast(`Error: ${err.message || 'Check local Ollama server'}`);
+        agentStream.renderResults({
+          status: "ERROR",
+          verified_answer: `### System Notice\n${err.message || 'Diagnostic reasoning encountered an error. Please verify the local Ollama daemon is running.'}`,
+          sources: [],
+          verification: {
+            status: "ERROR",
+            groundedness_score: 0,
+            hallucination_risk: "HIGH",
+            audit_checks: [err.message || "Failed to contact local inference engine."]
+          }
+        });
+      } finally {
+        if (executeBtn) {
+          executeBtn.disabled = false;
+          executeBtn.innerHTML = executeBtn.dataset.origHtml || 'DISPATCH MULTI-AGENT PIPELINE';
+        }
+        if (queryInput) queryInput.disabled = false;
       }
     });
   }
