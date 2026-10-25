@@ -1,7 +1,7 @@
 /**
  * ORION Audio Recorder & Whisper STT Interface
  * Captures microphone audio, visualizes live waveform on HTML5 canvas,
- * and streams audio bytes to local Whisper STT pipeline.
+ * and integrates Web Speech recognition with local Whisper STT pipeline.
  */
 
 class AudioRecorderHandler {
@@ -20,6 +20,41 @@ class AudioRecorderHandler {
     this.analyser = null;
     this.animFrameId = null;
     this.lastRecordedBlob = null;
+    this.recognizedSpeechText = "";
+
+    // Web Speech API support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    this.hasWebSpeech = !!SpeechRecognition;
+    this.recognition = this.hasWebSpeech ? new SpeechRecognition() : null;
+
+    if (this.recognition) {
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
+      this.recognition.lang = 'en-US';
+
+      this.recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = (finalTranscript || interimTranscript).trim();
+        if (currentText) {
+          this.recognizedSpeechText = currentText;
+          this.displayTranscript(currentText);
+        }
+      };
+
+      this.recognition.onerror = (event) => {
+        console.warn("Web Speech recognition notice:", event.error);
+      };
+    }
 
     this.initEvents();
     this.drawIdleWaveform();
@@ -56,6 +91,7 @@ class AudioRecorderHandler {
   }
 
   async startRecording() {
+    this.recognizedSpeechText = "";
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -64,7 +100,13 @@ class AudioRecorderHandler {
       this.analyser.fftSize = 64;
       source.connect(this.analyser);
 
-      this.mediaRecorder = new MediaRecorder(stream);
+      // Preferred MIME types
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      }
+
+      this.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       this.audioChunks = [];
 
       this.mediaRecorder.ondataavailable = (e) => {
@@ -72,26 +114,44 @@ class AudioRecorderHandler {
       };
 
       this.mediaRecorder.onstop = () => {
-        this.lastRecordedBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+        const recordedMime = this.mediaRecorder.mimeType || 'audio/webm';
+        this.lastRecordedBlob = new Blob(this.audioChunks, { type: recordedMime });
         this.processRecordedAudio(this.lastRecordedBlob);
         stream.getTracks().forEach(track => track.stop());
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(250);
       this.isRecording = true;
+
+      // Start Web Speech in parallel for real-time live transcription
+      if (this.recognition) {
+        try {
+          this.recognition.start();
+        } catch (e) {
+          // Already started or busy
+        }
+      }
+
       this.recordBtn.classList.add('recording');
       this.statusText.textContent = 'STOP RECORDING';
-      this.transcriptDisplay.innerHTML = '<span class="transcript-placeholder" style="color:var(--accent-amber);">Listening to voice note... Speak clearly into microphone.</span>';
+      this.transcriptDisplay.innerHTML = '<span class="transcript-placeholder" style="color:var(--accent-amber);">🔴 Recording... Speak your question now (click STOP when done).</span>';
       
       this.drawWaveform();
+      window.showToast?.("Microphone active. Speak your question.");
     } catch (err) {
       console.warn('Microphone access unavailable or denied:', err);
-      // Fallback voice simulation for offline demo testing
+      window.showToast?.("Microphone permission denied or unavailable.");
       this.simulateVoiceCapture();
     }
   }
 
   stopRecording() {
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+      } catch (e) {}
+    }
+
     if (this.mediaRecorder && this.isRecording) {
       this.mediaRecorder.stop();
     }
@@ -147,11 +207,17 @@ class AudioRecorderHandler {
   }
 
   async processRecordedAudio(blob) {
-    this.transcriptDisplay.innerHTML = '<span class="transcript-placeholder">Transcribing audio via local Whisper STT...</span>';
-    
+    // If Web Speech already captured the spoken question, keep it displayed
+    if (this.recognizedSpeechText && this.recognizedSpeechText.trim()) {
+      this.displayTranscript(this.recognizedSpeechText);
+    } else {
+      this.transcriptDisplay.innerHTML = '<span class="transcript-placeholder">Transcribing audio via Whisper STT...</span>';
+    }
+
     try {
       const formData = new FormData();
-      formData.append('audio_file', blob, 'technician_voice.wav');
+      const filename = blob.type.includes('wav') ? 'technician_voice.wav' : 'technician_voice.webm';
+      formData.append('audio_file', blob, filename);
 
       const resp = await fetch('/api/transcribe', {
         method: 'POST',
@@ -160,35 +226,50 @@ class AudioRecorderHandler {
 
       if (resp.ok) {
         const data = await resp.json();
-        const text = data.transcript || "Turbine generator high vibration detected during load test.";
-        this.displayTranscript(text);
+        const serverText = (data.transcript || "").trim();
+        
+        // If live Web Speech captured real speech, prefer it over default offline fallback
+        const isDefaultFallback = serverText.includes("Turbine generator vibration alarm and high bearing temperature");
+        if (this.recognizedSpeechText && this.recognizedSpeechText.trim() && isDefaultFallback) {
+          this.displayTranscript(this.recognizedSpeechText);
+        } else if (serverText) {
+          this.displayTranscript(serverText);
+        }
       } else {
         throw new Error("Transcribe endpoint error");
       }
     } catch (e) {
-      this.simulateVoiceCapture();
+      console.warn("Backend transcription fallback:", e);
+      if (!this.recognizedSpeechText) {
+        this.simulateVoiceCapture();
+      }
     }
   }
 
   simulateVoiceCapture() {
     const samples = [
-      "Voice Note: Turbine generator vibration alarm 1X RPM dominant peak observed during load test.",
-      "Voice Note: Hydraulic power unit pressure fluctuating between 140 and 210 bar. Inspect PRV-12.",
-      "Voice Note: Centrifugal feedwater pump cavitation acoustic crackling sound and seal leak.",
-      "Voice Note: Variable frequency drive overcurrent trip fault 2310 on motor MCC-4."
+      "Turbine generator vibration alarm 1X RPM dominant peak observed during load test.",
+      "Hydraulic power unit pressure fluctuating between 140 and 210 bar. Inspect PRV-12.",
+      "Centrifugal feedwater pump cavitation acoustic crackling sound and seal leak.",
+      "Variable frequency drive overcurrent trip fault 2310 on motor MCC-4."
     ];
     const picked = samples[Math.floor(Math.random() * samples.length)];
     this.displayTranscript(picked);
   }
 
   displayTranscript(text) {
+    if (!text || !text.trim()) return;
+    const cleanText = text.trim();
+
     if (this.transcriptDisplay) {
-      this.transcriptDisplay.innerHTML = `<strong>VOICE TRANSCRIPT:</strong> "${text}"`;
+      this.transcriptDisplay.innerHTML = `<strong>VOICE TRANSCRIPT:</strong> "${cleanText}"`;
     }
-    if (this.queryInput && !this.queryInput.value.trim()) {
-      this.queryInput.value = text;
+
+    if (this.queryInput) {
+      this.queryInput.value = cleanText;
     }
-    window.showToast?.("Voice transcription parsed successfully.");
+
+    window.showToast?.("Voice transcription recorded.");
   }
 
   getAudioBlob() {
@@ -197,6 +278,7 @@ class AudioRecorderHandler {
 
   clearAudio() {
     this.lastRecordedBlob = null;
+    this.recognizedSpeechText = "";
     if (this.transcriptDisplay) {
       this.transcriptDisplay.innerHTML = '<span class="transcript-placeholder">No voice input captured. Click \'RECORD NOTE\' to dictate.</span>';
     }

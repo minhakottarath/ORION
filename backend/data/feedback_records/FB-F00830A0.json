@@ -1,0 +1,11 @@
+{
+  "feedback_id": "FB-F00830A0",
+  "timestamp": "2026-10-24T14:02:17Z",
+  "technician_name": "Senior Technician J. Miller",
+  "equipment_id": "HPU-SERIES-900",
+  "original_query": "Hydraulic pressure fluctuation on HPU Unit 4",
+  "original_answer": "### Root Cause Analysis (RCA)\nPer [MANUAL_TURBINE_GENERATOR_T800: Pattern A: 1X RPM Dominant Peak (Sub-Synchronous or 1st Harmonic)], elevated radial or thrust vibration on the Titan-800 Gas Turbine correlates directly to specific frequency signatures:\n1. **1X RPM Dominant Peak (>4.5 mm/s RMS):** High probability of rotor unbalance caused by compressor blade fouling or thermal bow.\n2. **2X RPM Harmonic Peak:** Indicates shaft angular/parallel misalignment between the turbine output shaft and reduction gearbox, or loose coupling bolts.\n3. **Sub-Synchronous Whirl (0.43X\u20130.48X RPM):** Hydrodynamic oil whirl in the tilt-pad journal bearings, often provoked by cold lube oil (<35\u00b0C) or improper viscosity.\n\n### Actionable Diagnostic Procedure\n- **Step 1 (Immediate Derate):** If vibration exceeds 4.5 mm/s RMS, derate generator output by 30% (50 MW to 35 MW) and observe 3-minute stabilization trend.\n- **Step 2 (Off-Line Compressor Wash):** If 1X peak persists, schedule off-line compressor water wash per Section 4.3 to clear blade deposits.\n- **Step 3 (Coupling & Alignment Check):** Verify cold alignment offsets with laser alignment tool (`#ALIGN-OPT-02`) and inspect coupling spacer bolts (torque: 185 Nm with Loctite 271).\n\n### Safety & Emergency Protocol\n- If Bearing #1 metal temperature escalates >2\u00b0C/min or vibration surpasses 7.1 mm/s RMS, initiate emergency trip.\n- Maintain turning gear operation (slow roll at 6 rpm for \u226524 hours) post-shutdown to avoid permanent rotor sag.",
+  "verdict": "confirmed",
+  "technician_notes": "Replaced Schrader valve seal on accumulator ACC-1 and torqued PRV-12 flange. Pressure stabilized at 180 bar.",
+  "status": "VALIDATED"
+}
