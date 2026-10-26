@@ -1,0 +1,11 @@
+{
+  "feedback_id": "FB-BB958243",
+  "timestamp": "2026-10-26T06:36:43Z",
+  "technician_name": "Senior Technician J. Miller",
+  "equipment_id": "HPU-SERIES-900",
+  "original_query": "Hydraulic pressure fluctuation on HPU Unit 4",
+  "original_answer": "Certainly! Here's a direct, concise answer to your question regarding the high vibraction observed during load test on Turbine Generator T800:\n\nThe provided industrial documentation states that the high vibraction observed during load test was caused by rotor mass unbalance caused by compressor blade fouling, turbine deposit spallaition, or thermal bow. The root cause of this issue is likely due to either foreign object damage (FOD) or particulates erosion on IGVs for the compressor and/or turbine blades. To remedy this issue, perform off-line compressor water wash (Standard Wash Procedure Section 4.3), inspect inlet guide vanes (IGVs) for foreign object damage or particulate erosiion, execute single-plane dynamic trim balancing using Bently Nevada 3500 rack data, and verify that the turbine output shaft and reduction gearbox are aligned correctly with each other. If these remedies",
+  "verdict": "confirmed",
+  "technician_notes": "Replaced Schrader valve seal on accumulator ACC-1 and torqued PRV-12 flange. Pressure stabilized at 180 bar.",
+  "status": "VALIDATED"
+}

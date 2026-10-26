@@ -17,14 +17,15 @@ class AgentOrchestrator:
         self.llm_client = llm_client
         self.retrieval_agent = RetrievalAgent(vector_store)
         self.reasoning_agent = ReasoningAgent(llm_client)
-        self.verification_agent = VerificationAgent()
+        self.verification_agent = VerificationAgent(llm_client)
 
     def process_query(
         self,
         query: str,
         voice_transcript: Optional[str] = None,
         vision_data: Optional[Dict[str, Any]] = None,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        min_similarity: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Executes the full offline multi-agent industrial pipeline.
@@ -56,33 +57,45 @@ class AgentOrchestrator:
         retrieval_res = self.retrieval_agent.retrieve(
             query=effective_query,
             top_k=4,
-            metadata_filter=metadata_filter
+            metadata_filter=metadata_filter,
+            min_similarity=min_similarity
         )
         retrieval_duration = round((time.time() - retrieval_start) * 1000, 1)
 
+        chunks_found = retrieval_res.get("chunks", [])
+        retrieval_status = retrieval_res.get("status", "COMPLETED")
+
         agent_steps.append({
             "agent": "Retrieval Agent",
-            "status": "COMPLETED",
+            "status": retrieval_status,
             "latency_ms": retrieval_duration,
-            "summary": f"Retrieved {retrieval_res['total_retrieved']} relevant industrial chunks from ChromaDB.",
-            "sources_found": [s["title"] for s in retrieval_res["sources"]]
+            "summary": (
+                f"Retrieved {len(chunks_found)} relevant industrial chunks from vector store."
+                if len(chunks_found) > 0
+                else "No relevant industrial documentation matched above similarity threshold."
+            ),
+            "sources_found": [s["title"] for s in retrieval_res.get("sources", [])]
         })
 
         # 2. Reasoning Agent Step
         reasoning_start = time.time()
         reasoning_res = self.reasoning_agent.reason(
             query=effective_query,
-            retrieved_chunks=retrieval_res["chunks"],
+            retrieved_chunks=chunks_found,
             vision_summary=vision_summary
         )
         reasoning_duration = round((time.time() - reasoning_start) * 1000, 1)
 
         agent_steps.append({
             "agent": "Reasoning Agent",
-            "status": "COMPLETED",
+            "status": reasoning_res["status"],
             "latency_ms": reasoning_duration,
-            "summary": "Synthesized Root Cause Analysis, SOP step sequence, and safety protocols.",
-            "chunks_synthesized": reasoning_res["context_chunks_used"]
+            "summary": (
+                f"Evidence-grounded synthesis complete using {len(chunks_found)} chunks."
+                if len(chunks_found) > 0
+                else "Insufficient evidence: Refused to fabricate an unsupported answer."
+            ),
+            "chunks_synthesized": reasoning_res.get("context_chunks_used", 0)
         })
 
         # 3. Verification Agent Step
@@ -90,7 +103,7 @@ class AgentOrchestrator:
         verification_res = self.verification_agent.verify(
             query=effective_query,
             reasoning_output=reasoning_res["reasoning_output"],
-            retrieved_chunks=retrieval_res["chunks"]
+            retrieved_chunks=chunks_found
         )
         verification_duration = round((time.time() - verification_start) * 1000, 1)
 
@@ -98,15 +111,23 @@ class AgentOrchestrator:
             "agent": "Verification Agent",
             "status": verification_res["status"],
             "latency_ms": verification_duration,
-            "summary": f"Audit complete. Groundedness Score: {verification_res['groundedness_score']}% (Hallucination Risk: {verification_res['hallucination_risk']}).",
+            "summary": (
+                f"Claim audit complete. Groundedness Score: {verification_res['groundedness_score']}% (Hallucination Risk: {verification_res['hallucination_risk']})."
+                if len(chunks_found) > 0
+                else "Audit confirmed: No unsupported claims presented."
+            ),
             "audit_checks": verification_res["audit_checks"]
         })
 
         total_latency = round((time.time() - start_time) * 1000, 1)
 
+        final_answer = reasoning_res["reasoning_output"]
+        if verification_res.get("status") == "SECURITY_VIOLATION":
+            final_answer = "⚠️ SECURITY INTERVENTION: The response was blocked due to an untrusted prompt injection attempt in retrieved document content."
+
         return {
             "query": effective_query,
-            "verified_answer": reasoning_res["reasoning_output"],
+            "verified_answer": final_answer,
             "sources": retrieval_res["sources"],
             "verification": verification_res,
             "agent_steps": agent_steps,

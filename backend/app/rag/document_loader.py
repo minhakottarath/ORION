@@ -93,16 +93,19 @@ class DocumentLoader:
             return "\n".join(text_lines), metadata
 
         elif suffix == ".pdf":
-            # Basic text extraction from PDF
             try:
                 import pypdf
                 reader = pypdf.PdfReader(str(file_path))
-                text = ""
-                for page in reader.pages:
-                    text += page.extract_text() or ""
-                return text, metadata
-            except Exception:
-                # If pypdf is not installed, read as binary text representation
+                pages_text = []
+                for idx, page in enumerate(reader.pages):
+                    ptxt = page.extract_text() or ""
+                    if ptxt.strip():
+                        pages_text.append(f"## Page {idx + 1}\n{ptxt.strip()}")
+                metadata["total_pages"] = len(reader.pages)
+                metadata["source_type"] = "PDF Technical Manual"
+                full_text = "\n\n".join(pages_text) if pages_text else "No extractable text found in PDF."
+                return full_text, metadata
+            except Exception as e:
                 with open(file_path, "rb") as f:
                     raw_bytes = f.read()
                 clean_text = "".join(chr(b) if 32 <= b <= 126 or b in (10, 13) else " " for b in raw_bytes[:10000])

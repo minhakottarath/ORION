@@ -4,7 +4,7 @@ Specialized agent for searching, ranking, and synthesizing evidence from ChromaD
 """
 from typing import List, Dict, Any, Optional
 from app.rag.vector_store import VectorStore
-from app.config import TOP_K_CHUNKS
+from app.config import TOP_K_CHUNKS, SIMILARITY_THRESHOLD
 
 class RetrievalAgent:
     def __init__(self, vector_store: VectorStore):
@@ -14,16 +14,30 @@ class RetrievalAgent:
         self,
         query: str,
         top_k: int = TOP_K_CHUNKS,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        min_similarity: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Executes semantic retrieval across indexed industrial documentation.
         Returns retrieved chunks, source metadata, and execution metrics.
+        Reports INSUFFICIENT_EVIDENCE when no chunk satisfies the similarity threshold.
         """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            return {
+                "status": "INSUFFICIENT_EVIDENCE",
+                "query": query,
+                "total_retrieved": 0,
+                "chunks": [],
+                "sources": [],
+                "message": "Query was empty."
+            }
+
         chunks = self.vector_store.query(
-            query_text=query,
+            query_text=cleaned_query,
             top_k=top_k,
-            metadata_filter=metadata_filter
+            metadata_filter=metadata_filter,
+            min_similarity=min_similarity
         )
 
         sources = []
@@ -32,6 +46,7 @@ class RetrievalAgent:
             sources.append({
                 "chunk_id": c.get("id"),
                 "doc_id": meta.get("doc_id", "DOC"),
+                "file_name": meta.get("file_name", "unknown"),
                 "title": meta.get("title", "Document"),
                 "section": meta.get("section", "General"),
                 "equipment_type": meta.get("equipment_type", "Industrial Equipment"),
@@ -40,10 +55,13 @@ class RetrievalAgent:
                 "snippet": c.get("text", "")[:320] + "..."
             })
 
+        status = "COMPLETED" if len(chunks) > 0 else "INSUFFICIENT_EVIDENCE"
+
         return {
-            "status": "COMPLETED",
-            "query": query,
+            "status": status,
+            "query": cleaned_query,
             "total_retrieved": len(chunks),
             "chunks": chunks,
-            "sources": sources
+            "sources": sources,
+            "threshold_used": min_similarity or SIMILARITY_THRESHOLD
         }

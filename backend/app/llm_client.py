@@ -8,35 +8,45 @@ import requests
 from typing import List, Dict, Any, Optional
 
 from app.config import OLLAMA_BASE_URL, DEFAULT_LLM_MODEL, DEFAULT_VISION_MODEL
-from app.mock_engine import IndustrialMockEngine
-
 class LocalLLMClient:
     def __init__(self, base_url: str = OLLAMA_BASE_URL):
         self.base_url = base_url.rstrip('/')
 
-    def check_health(self) -> Dict[str, Any]:
-        """Checks if local Ollama daemon is responsive and retrieves available models."""
+    def get_available_models(self) -> List[str]:
+        """Returns list of installed local Ollama models."""
         try:
             resp = requests.get(f"{self.base_url}/api/tags", timeout=2.0)
             if resp.status_code == 200:
                 models = resp.json().get("models", [])
-                model_names = [m.get("name") for m in models]
-                return {
-                    "online": True,
-                    "provider": "Ollama (Local Offline Server)",
-                    "endpoint": self.base_url,
-                    "available_models": model_names,
-                    "selected_model": DEFAULT_LLM_MODEL
-                }
+                return [m.get("name", "") for m in models]
         except Exception:
             pass
+        return []
+
+    def check_health(self) -> Dict[str, Any]:
+        """Checks if local Ollama daemon is responsive and retrieves available models."""
+        model_names = self.get_available_models()
+        if model_names:
+            # Pick configured model or best available text generation model
+            selected = DEFAULT_LLM_MODEL
+            if not any(selected.lower() in m.lower() for m in model_names):
+                text_models = [m for m in model_names if "minilm" not in m.lower() and "embed" not in m.lower()]
+                selected = text_models[0] if text_models else model_names[0]
+
+            return {
+                "online": True,
+                "provider": "Ollama (Local Offline Server)",
+                "endpoint": self.base_url,
+                "available_models": model_names,
+                "selected_model": selected
+            }
 
         return {
             "online": False,
-            "provider": "Internal Industrial Diagnostic Engine (Air-Gapped)",
+            "provider": "Local Ollama Daemon (Disconnected)",
             "endpoint": self.base_url,
-            "available_models": ["internal-industrial-v1 (Active)"],
-            "selected_model": "internal-industrial-v1"
+            "available_models": [],
+            "selected_model": None
         }
 
     def generate(
@@ -48,9 +58,22 @@ class LocalLLMClient:
     ) -> str:
         """
         Sends generation request to local Ollama.
-        Falls back to domain-specific MockEngine if Ollama is unavailable.
+        Executes dynamically; never returns canned or hardcoded mock answers.
+        Raises RuntimeError if local LLM is unavailable or generation fails.
         """
+        available = self.get_available_models()
+        if not available:
+            raise RuntimeError(
+                "Local offline LLM daemon is offline or has no models installed. "
+                "Ensure Ollama is running on localhost."
+            )
+
         model_name = model or DEFAULT_LLM_MODEL
+        # If requested model name not directly found, pick an installed text model
+        if not any(model_name.lower() in m.lower() for m in available):
+            text_models = [m for m in available if "minilm" not in m.lower() and "embed" not in m.lower()]
+            model_name = text_models[0] if text_models else available[0]
+
         try:
             payload = {
                 "model": model_name,
@@ -58,23 +81,22 @@ class LocalLLMClient:
                 "system": system_prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.2,  # Low temperature for precise technical output
-                    "top_p": 0.9
+                    "temperature": 0.1,  # Low temperature for factual precision
+                    "top_p": 0.85,
+                    "num_predict": 220,  # Fast, crisp industrial response
+                    "num_ctx": 2048,
+                    "repeat_penalty": 1.15
                 }
             }
-            resp = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=25.0)
+            resp = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=30.0)
             if resp.status_code == 200:
                 result = resp.json()
-                if "response" in result and result["response"].strip():
-                    return result["response"].strip()
-        except Exception:
-            pass
-
-        # Fallback to Industrial Diagnostic Engine
-        return IndustrialMockEngine.generate_reasoning(
-            query=prompt,
-            retrieved_chunks=retrieved_chunks or []
-        )
+                response_text = result.get("response", "").strip()
+                if response_text:
+                    return response_text
+            raise RuntimeError(f"Local LLM returned status {resp.status_code}: {resp.text}")
+        except requests.RequestException as e:
+            raise RuntimeError(f"Connection to local LLM failed: {e}")
 
     def analyze_image(self, image_bytes: bytes, prompt: str) -> str:
         """

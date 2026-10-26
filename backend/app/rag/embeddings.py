@@ -14,7 +14,7 @@ class EmbeddingGenerator:
     def __init__(self, embedding_dim: int = 384):
         self.embedding_dim = embedding_dim
         self._sentence_transformer_model = None
-        self._ollama_available = None
+        self._cached_embedding_model = None
         self._init_sentence_transformer()
 
     def _init_sentence_transformer(self):
@@ -24,22 +24,31 @@ class EmbeddingGenerator:
         except Exception:
             self._sentence_transformer_model = None
 
-    def _check_ollama_embeddings(self) -> bool:
-        if self._ollama_available is not None:
-            return self._ollama_available
+    def _get_ollama_embedding_model(self) -> Optional[str]:
+        if self._cached_embedding_model:
+            return self._cached_embedding_model
         try:
-            resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=0.3)
-            self._ollama_available = (resp.status_code == 200)
+            resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=1.5)
+            if resp.status_code == 200:
+                models = [m.get("name", "") for m in resp.json().get("models", [])]
+                for m in models:
+                    base = m.split(":")[0].lower()
+                    if base in [DEFAULT_EMBEDDING_MODEL.lower(), "all-minilm", "nomic-embed-text"]:
+                        self._cached_embedding_model = m
+                        return m
+                if models:
+                    self._cached_embedding_model = models[0]
+                    return models[0]
         except Exception:
-            self._ollama_available = False
-        return self._ollama_available
+            pass
+        return None
 
     def get_embedding(self, text: str) -> List[float]:
         """
         Generates an embedding vector for the provided text.
         Priority:
         1. Local sentence_transformers model
-        2. Ollama /api/embeddings endpoint
+        2. Ollama /api/embeddings endpoint (local offline daemon)
         3. Internal deterministic semantic feature projection (guaranteed offline fallback)
         """
         # 1. Local sentence_transformers if available
@@ -50,20 +59,21 @@ class EmbeddingGenerator:
             except Exception:
                 pass
 
-        # 2. Ollama Embeddings API (only if Ollama is responsive)
-        if self._check_ollama_embeddings():
+        # 2. Ollama Embeddings API
+        ollama_model = self._get_ollama_embedding_model()
+        if ollama_model:
             try:
                 resp = requests.post(
                     f"{OLLAMA_BASE_URL}/api/embeddings",
-                    json={"model": DEFAULT_EMBEDDING_MODEL, "prompt": text},
-                    timeout=2.0
+                    json={"model": ollama_model, "prompt": text},
+                    timeout=5.0
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    if "embedding" in data:
+                    if "embedding" in data and data["embedding"]:
                         return data["embedding"]
             except Exception:
-                self._ollama_available = False
+                pass
 
         # 3. Deterministic Domain-Aware Semantic Feature Projection
         return self._semantic_projection_embedding(text)

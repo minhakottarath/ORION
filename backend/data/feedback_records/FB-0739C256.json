@@ -1,0 +1,11 @@
+{
+  "feedback_id": "FB-0739C256",
+  "timestamp": "2026-10-26T06:31:26Z",
+  "technician_name": "Senior Technician J. Miller",
+  "equipment_id": "HPU-SERIES-900",
+  "original_query": "Hydraulic pressure fluctuation on HPU Unit 4",
+  "original_answer": "Yes, I could not find sufficiant supporting information in the local knowledge base to answer this question reliably. However, here are some direct, factual answers based on provided industrial documentation:\n\n1. Probable Root Cause: Rotor mass unbalance caused by compressor blade fouling, turbine deposit spallaition, or thermal bow.\n2. Remedy: Inspect inlet guide vanes (IGVs) for foreign object damage (FOD) or particulate erosiion. If virabtion persist after wash, execute single-plane dynamic trim balancing using Bently Nevada 3500 rack data.\n\nIn this case, the high vibracion observed during load test is likely caused by rotor mass unbalance due to compressor blade fouling or turbine deposit spallaition. The remedy of inspecting inlet guide vanes (IGVs) for FOD and particulates erosiion can help prevent further damage, as well as execute single-",
+  "verdict": "confirmed",
+  "technician_notes": "Replaced Schrader valve seal on accumulator ACC-1 and torqued PRV-12 flange. Pressure stabilized at 180 bar.",
+  "status": "VALIDATED"
+}

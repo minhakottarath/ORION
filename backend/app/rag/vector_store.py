@@ -5,6 +5,7 @@ Provides ChromaDB persistent storage with an embedded SQLite vector fallback for
 import sqlite3
 import json
 import math
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -106,11 +107,14 @@ class VectorStore:
         self,
         query_text: str,
         top_k: int = TOP_K_CHUNKS,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        min_similarity: Optional[float] = None
     ) -> List[Dict[str, Any]]:
         """
-        Retrieves top_k relevant chunks for the query using cosine similarity.
+        Retrieves top_k relevant chunks for the query using cosine similarity,
+        strictly enforcing SIMILARITY_THRESHOLD to filter out irrelevant documents.
         """
+        threshold = min_similarity if min_similarity is not None else SIMILARITY_THRESHOLD
         query_emb = self.embedder.get_embedding(query_text)
         
         # 1. Try ChromaDB
@@ -118,22 +122,24 @@ class VectorStore:
             try:
                 chroma_res = self.chroma_collection.query(
                     query_embeddings=[query_emb],
-                    n_results=top_k,
+                    n_results=top_k * 2,
                     where=metadata_filter if metadata_filter else None
                 )
                 results = []
                 if chroma_res and chroma_res["documents"] and len(chroma_res["documents"][0]) > 0:
                     for i in range(len(chroma_res["documents"][0])):
                         dist = chroma_res["distances"][0][i] if "distances" in chroma_res and chroma_res["distances"] else 0.5
-                        # Approximate similarity from distance
                         sim = max(0.0, 1.0 - (dist / 2.0))
-                        results.append({
-                            "id": chroma_res["ids"][0][i],
-                            "text": chroma_res["documents"][0][i],
-                            "metadata": chroma_res["metadatas"][0][i],
-                            "similarity_score": round(sim, 3)
-                        })
-                    return results
+                        if sim >= threshold:
+                            results.append({
+                                "id": chroma_res["ids"][0][i],
+                                "text": chroma_res["documents"][0][i],
+                                "metadata": chroma_res["metadatas"][0][i],
+                                "similarity_score": round(sim, 3)
+                            })
+                    if results:
+                        results.sort(key=lambda x: x["similarity_score"], reverse=True)
+                        return results[:top_k]
             except Exception:
                 pass
 
@@ -143,11 +149,19 @@ class VectorStore:
             cursor.execute("SELECT id, text, metadata_json, embedding_json FROM document_chunks")
             rows = cursor.fetchall()
 
+        stop_words = {
+            "a", "an", "the", "in", "on", "at", "to", "for", "of", "and", "or",
+            "is", "are", "was", "were", "with", "by", "from", "it", "that", "this",
+            "be", "as", "what", "which", "how", "when", "where", "why", "who", "all",
+            "any", "can", "could", "should", "would", "do", "does", "did", "have", "has", "had"
+        }
+        query_tokens = {t for t in re.findall(r'[a-zA-Z0-9_\-\.\#]+', query_text.lower()) if t not in stop_words and len(t) >= 2}
+
         scored_chunks = []
         for row_id, text, meta_str, emb_str in rows:
             meta = json.loads(meta_str)
             
-            # Apply metadata filter if provided with flexible matching
+            # Apply metadata filter if provided
             if metadata_filter:
                 match = True
                 for k, v in metadata_filter.items():
@@ -167,23 +181,23 @@ class VectorStore:
             emb = json.loads(emb_str)
             sim = self._cosine_similarity(query_emb, emb)
             
-            # Keyword bonus for exact industrial tag matches (hybrid search boost)
-            query_tokens = set(query_text.lower().split())
-            text_tokens = set(text.lower().split())
-            overlap = len(query_tokens.intersection(text_tokens))
-            bonus = min(0.2, overlap * 0.03)
+            # Lexical keyword bonus strictly for meaningful technical tokens
+            text_tokens = set(re.findall(r'[a-zA-Z0-9_\-\.\#]+', text.lower()))
+            overlap = query_tokens.intersection(text_tokens)
+            # Give higher bonus to specific alphanumeric codes (like PRV-12, T800, ACC-1, 2310)
+            code_matches = sum(1 for t in overlap if any(c.isdigit() for c in t) or "-" in t or "_" in t)
+            word_matches = len(overlap) - code_matches
+            bonus = min(0.18, code_matches * 0.05 + word_matches * 0.02)
+            
             final_score = min(1.0, sim + bonus)
 
-            scored_chunks.append({
-                "id": row_id,
-                "text": text,
-                "metadata": meta,
-                "similarity_score": round(final_score, 3)
-            })
-
-        # If metadata filter returned 0 results, fall back to unfiltered search to prevent empty results
-        if not scored_chunks and metadata_filter:
-            return self.query(query_text=query_text, top_k=top_k, metadata_filter=None)
+            if final_score >= threshold:
+                scored_chunks.append({
+                    "id": row_id,
+                    "text": text,
+                    "metadata": meta,
+                    "similarity_score": round(final_score, 3)
+                })
 
         # Sort by similarity descending
         scored_chunks.sort(key=lambda x: x["similarity_score"], reverse=True)

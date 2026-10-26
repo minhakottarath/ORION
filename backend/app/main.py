@@ -91,6 +91,7 @@ class FeedbackRequest(BaseModel):
 
 # ----------------- API Endpoints -----------------
 
+@app.get("/api/health")
 @app.get("/api/system/status")
 def get_system_status():
     """Returns local system diagnostics, Ollama health, and Vector DB status."""
@@ -125,13 +126,24 @@ def chat_endpoint(req: ChatRequest):
 
 @app.post("/api/transcribe")
 async def transcribe_audio(audio_file: UploadFile = File(...)):
-    """Transcribes technician speech audio using local Whisper STT."""
+    """Transcribes technician speech audio using local offline Vosk/Whisper STT."""
     contents = await audio_file.read()
+    if not contents or len(contents) < 100:
+        return {
+            "status": "EMPTY",
+            "filename": audio_file.filename,
+            "transcript": "",
+            "message": "No audio data received."
+        }
+
     transcript = audio_transcriber.transcribe_audio_bytes(contents, filename=audio_file.filename)
+    status_info = audio_transcriber.get_status()
+    
     return {
-        "status": "SUCCESS",
+        "status": "SUCCESS" if transcript else "NO_SPEECH_DETECTED",
         "filename": audio_file.filename,
-        "transcript": transcript
+        "transcript": transcript,
+        "engine": status_info.get("primary_engine", "Offline STT")
     }
 
 @app.post("/api/vision/analyze")

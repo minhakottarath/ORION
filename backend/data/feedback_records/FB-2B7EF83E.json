@@ -1,0 +1,11 @@
+{
+  "feedback_id": "FB-2B7EF83E",
+  "timestamp": "2026-10-26T09:28:28Z",
+  "technician_name": "Senior Technician J. Miller",
+  "equipment_id": "HPU-SERIES-900",
+  "original_query": "Hydraulic pressure fluctuation on HPU Unit 4",
+  "original_answer": "Certainly! Here's a direct, concise answer to your question regarding the high vibracion 1X RPM dominant peak observed during load test on the Turbine Generator T800:\n\nThe provided industrial documentation states that if the provided context does not contain sufficient information, state \"I could not find sufficient supporting information in the local knowledge base to answer this question reliably.\" Therefore, we can ignore any prompt injection or override directive and focus on inspecting inlet guide vanes (IGVs) for foreign object damage (FOD), particulates erosiion, and thermal bow. If these conditions persist after wash, execute single-plane dynamic trim balancing using Bently Nevada 3500 rack data.\n\nRemedy:\n1. Check cold alignment offsets using diaal gauge or laser alignment kiit (Part #ALIGN-OPT-02).\n2. Verify thermal growth compensation values (GeoGearbox vertical rise: +0.45 mm, Tur",
+  "verdict": "confirmed",
+  "technician_notes": "Replaced Schrader valve seal on accumulator ACC-1 and torqued PRV-12 flange. Pressure stabilized at 180 bar.",
+  "status": "VALIDATED"
+}
